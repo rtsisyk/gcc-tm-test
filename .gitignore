@@ -1,0 +1,17 @@
+.~
+*~
+*.o
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.pyc
+*.lot
+*.lof
+*-build-*/
+*.user
+.~*
+tmp/
+tester
