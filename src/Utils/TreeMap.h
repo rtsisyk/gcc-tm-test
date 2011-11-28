@@ -87,7 +87,8 @@ public:
     }
 
     Iterator insert(const KeyType& key, const ValueType& value) {
-        return Iterator(this, m_tree.insert(MapNode(key, value)));
+        TreeNode *node = m_tree.insert(MapNode(key, value));
+        return Iterator(this, node);
     }
 
     Iterator insertMulti(const KeyType& key, const ValueType& value) {
@@ -99,6 +100,28 @@ public:
             return end();
         } else {
             return Iterator(this, m_tree.remove(it.m_node));
+        }
+    }
+
+    __attribute__((transaction_safe))
+    Iterator removeAll(const KeyType& key) {
+        TreeNode *node = NULL;
+
+        for (node = m_tree.find(MapNode(key)); node != NULL && node->key.key() == key; ) {
+            node = m_tree.remove(node);
+        }
+
+        return Iterator(this, node);
+    }
+
+    ValueType take(const KeyType& key) {
+        TreeNode *node = m_tree.find(MapNode(key));
+        if (node != NULL) {
+            const ValueType result = node->key.value();
+            m_tree.remove(node);
+            return result;
+        } else {
+            return ValueType();
         }
     }
 
@@ -117,21 +140,25 @@ public:
 protected:
     class MapNode {
     public:
+        __attribute__((transaction_safe))
         MapNode() {
             m_key = KeyType();
             m_value = ValueType();
         }
 
+        __attribute__((transaction_safe))
         MapNode(const KeyType& key) {
             m_key = key;
             m_value = ValueType();
         }
 
+        __attribute__((transaction_safe))
         MapNode(const KeyType& key, const ValueType& value) {
             m_key = key;
             m_value = value;
         }
 
+        __attribute__((transaction_safe))
         MapNode(const MapNode& node) {
             m_key = node.m_key;
             m_value = node.m_value;
@@ -218,7 +245,7 @@ public:
     protected:
         friend class TreeMap;
 
-        Iterator(const Map *map, TreeNode *node) {
+        Iterator(const TreeMap *map, TreeNode *node) {
             m_container = map;
             m_node = node;
 
@@ -231,7 +258,7 @@ public:
             }
         }
 
-        const Map *m_container;
+        const TreeMap *m_container;
         TreeNode *m_node;
     };
 

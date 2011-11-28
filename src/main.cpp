@@ -7,17 +7,23 @@
 
 // Tests
 #include "Tests/ArraySumTest.h"
+#include "Tests/VectorInsertTest.h"
 #include "Tests/TreeInsertTest.h"
 #include "Tests/TreeRemoveTest.h"
+// #include "Tests/BankTest.h"
+
+#include "Utils/Vector.h"
 
 using namespace std;
 
 typedef map< string, function<ITest* (void)> > TestsMap;
 
 static const TestsMap TESTS = {
+    { "ArraySumTest", [] { return new ArraySumTest(); } },
+    { "VectorInsertTest", [] { return new VectorInsertTest(); } },
     { "TreeInsertTest", [] { return new TreeInsertTest(); } },
     { "TreeRemoveTest", [] { return new TreeRemoveTest(); } },
-    { "ArraySumTest", [] { return new ArraySumTest(); } },
+//    { "BankTest", [] { return new BankTest(); } },
 };
 
 typedef std::chrono::high_resolution_clock Clock;
@@ -35,6 +41,15 @@ int main(int argc, char *argv[])
         size_t threadsCount;
         size_t inputSize;
         size_t repeatCount;
+
+        // skip comment
+        if (cin.get() == '#') {
+            string line;
+            getline(cin, line);
+            continue;
+        } else {
+            cin.unget();
+        }
 
         cin >> testName >> threadsCount >> inputSize >> repeatCount;
         if (!cin.good()) {

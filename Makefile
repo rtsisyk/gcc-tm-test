@@ -6,7 +6,7 @@ SYSROOT=/usr/lib/gcc-snapshot
 CONTRIB=./contrib
 
 CXX=g++
-CXXFLAGS=-std=c++0x -O2 -pedantic -Wall -fgnu-tm -Isrc
+CXXFLAGS=-std=c++0x -O2 -pedantic -Wall -fgnu-tm -Isrc -g
 LDFLAGS=-Wl,-rpath,$(CONTRIB)/lib -Wl,-rpath,$(SYSROOT)/lib -litm -lpthread
 TARGET=tester
 
