@@ -1,18 +1,16 @@
 #
-# gcc >= 4.7.0 path  (apt-get install gcc-snapshot)
-SYSROOT=/usr/lib/gcc-snapshot
 
 # contrib directory
-CONTRIB=./contrib
+CONTRIB=./contrib/target
 
 CXX=g++
-CXXFLAGS=-std=c++0x -O2 -pedantic -Wall -fgnu-tm -Isrc -g
-LDFLAGS=-Wl,-rpath,$(CONTRIB)/lib -Wl,-rpath,$(SYSROOT)/lib -litm -lpthread
+CXXFLAGS=-std=c++0x -pedantic -Wall -fgnu-tm -Isrc -O2
+LDFLAGS=-Wl,-rpath,$(CONTRIB)/lib -Wl,-rpath,$(CONTRIB)/lib32 -Wl,-rpath,$(CONTRIB)/lib64 -Wl,-rpath,/usr/lib/gcc-snapshot/lib -litm -lpthread
 TARGET=tester
 
 ####
 
-PATH:=$(SYSROOT)/bin:${PATH}
+PATH:=$(CONTRIB)/bin:/usr/lib/gcc-snapshot/bin:${PATH}
 
 all: $(TARGET)
 
@@ -34,4 +32,4 @@ distclean: clean
 run: $(TARGET)
 	./$(TARGET) < ./tests.cfg
 
-.PHONY: contrib clean disclean run
+.PHONY: contrib clean distclean run
