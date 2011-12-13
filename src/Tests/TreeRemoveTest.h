@@ -22,7 +22,13 @@ public:
     }
 
 protected:
-   virtual void worker(size_t start, size_t end) {
+    virtual void workerSequential(size_t start, size_t end) {
+         for(size_t i = start; i < end; i++) {
+                 m_sharedSet.removeAll(m_input[i]);
+         }
+     }
+
+   virtual void workerThreaded(size_t start, size_t end) {
         for(size_t i = start; i < end; i++) {
             __transaction_atomic {
                 m_sharedSet.removeAll(m_input[i]);

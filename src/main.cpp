@@ -7,12 +7,14 @@
 
 // Tests
 #include "Tests/ArraySumTest.h"
-#include "Tests/VectorInsertTest.h"
+#include "Tests/ArrayInsertTest.h"
+#include "Tests/ListInsertTest.h"
 #include "Tests/TreeInsertTest.h"
 #include "Tests/TreeRemoveTest.h"
 // #include "Tests/BankTest.h"
 
 #include "Utils/Vector.h"
+#include "Utils/LinkedList.h"
 
 using namespace std;
 
@@ -20,7 +22,8 @@ typedef map< string, function<ITest* (void)> > TestsMap;
 
 static const TestsMap TESTS = {
     { "ArraySumTest", [] { return new ArraySumTest(); } },
-    { "VectorInsertTest", [] { return new VectorInsertTest(); } },
+    { "ArrayInsertTest", [] { return new ArrayInsertTest(); } },
+    { "ListInsertTest", [] { return new ListInsertTest(); } },
     { "TreeInsertTest", [] { return new TreeInsertTest(); } },
     { "TreeRemoveTest", [] { return new TreeRemoveTest(); } },
 //    { "BankTest", [] { return new BankTest(); } },
@@ -68,6 +71,11 @@ int main(int argc, char *argv[])
         cout << "Repeat count: " << repeatCount << endl;
 
         ITest *test = it->second();
+        double msThreadedAv = 0.0;
+        double msSequencialAv = 0.0;
+
+        bool isOk = true;
+
         for (size_t i = 0; i < repeatCount; i++) {
             cout << "Generating data..." << flush;
             test->generate(inputSize, threadsCount);
@@ -83,8 +91,10 @@ int main(int argc, char *argv[])
 
             if (test->check()) {
                 double ms = std::chrono::nanoseconds(t1 - t0).count() * 1e-6;
+                msThreadedAv += ms;
                 cout << "OK " << fixed << setprecision(3) << ms << " ms" << endl;
             } else {
+                isOk = false;
                 cout << "FAIL " << endl;
             }
 
@@ -101,14 +111,29 @@ int main(int argc, char *argv[])
 
             if (test->check()) {
                 double ms = std::chrono::nanoseconds(t3 - t2).count() * 1e-6;
+                msSequencialAv += ms;
                 cout << "OK " << fixed << setprecision(3) << ms << " ms" << endl;
             } else {
+                isOk = false;
                 cout << "FAIL " << endl;
             }
 
             test->teardown();
 
             cout << endl << flush;
+        }
+
+        if (isOk) {
+            msThreadedAv /= repeatCount;
+            msSequencialAv /= repeatCount;
+
+            cout << endl << "> " << testName << " ok "
+                 << inputSize << " " << threadsCount << " " <<
+                    repeatCount << " " <<
+                    msThreadedAv << " " <<
+                    msSequencialAv << endl;
+        } else {
+            cout << endl << "> " << testName << " fail" << endl;
         }
 
         delete test;

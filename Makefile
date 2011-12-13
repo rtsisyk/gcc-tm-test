@@ -18,6 +18,7 @@ $(TARGET): main.o
 	$(CXX) $(LDFLAGS) main.o -o $@
 
 main.o: src/main.cpp src/Tests/*.h src/Utils/*.h
+	$(CXX) -v
 	$(CXX) $(CXXFLAGS) -c src/main.cpp -o main.o
 
 contrib:

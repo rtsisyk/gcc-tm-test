@@ -1,4 +1,5 @@
-VectorInsertTest 1 1000000 3
 ArraySumTest 2 1000000 3
+ArrayInsertTest 2 1000000 3
+ListInsertTest 2 100000 3
 TreeInsertTest 2 200000 3
 TreeRemoveTest 2 200000 3

@@ -2,9 +2,16 @@
 #define STRING_H
 
 #include "Vector.h"
-#include <string.h>
+#include <cstring>
 
 namespace Utils {
+
+namespace Private {
+__attribute__((transaction_safe))
+int strncmp(const char *s1, const char *s2, size_t n);
+} // namespace Private
+
+
 class String: public Utils::Vector<char> {
 public:
     __attribute__((transaction_safe))
@@ -26,8 +33,7 @@ public:
             return false;
         }
 
-        /// FIXME: return (strncmp(m_data, vec.m_data, m_size) < 0);
-        return false;
+        return (Private::strncmp(m_data, vec.m_data, m_size) < 0);
     }
 };
 

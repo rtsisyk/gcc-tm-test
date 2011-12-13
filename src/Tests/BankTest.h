@@ -1,6 +1,9 @@
 #ifndef BANKTEST_H
 #define BANKTEST_H
 
+// This test can cause g++ segfault
+// See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51347
+
 #include <vector>
 #include <random>
 #include <memory>
@@ -12,11 +15,12 @@
 
 #include "Test.h"
 
-#error This test is currently broken (GCC segfault)
-
 namespace Banks {
+/*
+ * Public API
+ */
 
-typedef Utils::String String;
+using Utils::String;
 typedef String Login;
 typedef String Password;
 typedef double Money;
@@ -26,7 +30,7 @@ typedef long long AccountNumber;
 /**
  * Result of a bank operation
  */
-enum OperationResult {
+enum Result {
     RESULT_SUCCESS = 0,
     RESULT_INVALID_CREDENTIALS,
     RESULT_INVALID_SESSION,
@@ -42,16 +46,31 @@ public:
 
     }
 
-    virtual OperationResult registerCustomer(Login login, Password password) = 0;
-    virtual OperationResult login(Login login, Password password, SessionKey *key) = 0;
-    virtual OperationResult logout(const SessionKey& key) = 0;
-    virtual OperationResult createAccount(const SessionKey& key, AccountNumber *accountNumber) = 0;
-    virtual OperationResult getAccounts(const SessionKey& key, Utils::Vector<AccountNumber> &result) = 0;
-    virtual OperationResult getBalance(const SessionKey& key, const AccountNumber& accountNumber, Money *balance) = 0;
-    virtual OperationResult withdrawMoney(const SessionKey& key, const AccountNumber& accountNumber, Money sum) = 0;
-    virtual OperationResult depositMoney(const SessionKey& key, const AccountNumber& accountNumber, Money sum) = 0;
+    virtual Result registerCustomer(Login login, Password password) = 0;
+
+    virtual Result login(Login login, Password password, SessionKey *key) = 0;
+
+    virtual Result logout(const SessionKey& key) = 0;
+
+    virtual Result createAccount(const SessionKey& key,
+                                 AccountNumber *accountNumber) = 0;
+
+    virtual Result getAccounts(const SessionKey& key,
+                               Utils::Vector<AccountNumber> &result) = 0;
+
+    virtual Result getBalance(const SessionKey& key,
+                              const AccountNumber& accountNumber, Money *balance) = 0;
+
+    virtual Result withdrawMoney(const SessionKey& key,
+                                 const AccountNumber& accountNumber, Money sum) = 0;
+
+    virtual Result depositMoney(const SessionKey& key,
+                                const AccountNumber& accountNumber, Money sum) = 0;
 };
 
+/*
+ * Implementation
+ */
 class Bank: public IBank {
 public:
     Bank(Money ownMoney, double depositRate = 0.10) {
@@ -60,27 +79,20 @@ public:
         m_customerMoneyTotal = 0;
     }
 
-    /*
-     *  Public APIs from IBank
-     */
-
     /**
      * Register new customer
      */
-    OperationResult registerCustomer(String login, String password) {
-        if (m_customerLoginIdMap.count(login) > 0) {
+    Result registerCustomer(String login, String password) {
+        if (m_customerLoginIdCache.contains(login)) {
             return RESULT_DUPLICATE_LOGIN;
         }
 
-        CustomerInfo cust;
-        cust.login = login;
-        cust.password = password;
+        CustomerInfo cust = { login, password };
 
         __transaction_atomic {
             CustomerId id = m_customers.size();
             m_customers.pushBack(cust);
-            /// FIXME
-            m_customerLoginIdMap.insert(login, id);
+            m_customerLoginIdCache.insert(login, id);
         }
 
         return RESULT_SUCCESS;
@@ -89,62 +101,58 @@ public:
     /**
      * Authenticate customer and return SessionKey
      */
-    OperationResult login(String login, String password, SessionKey *key) {
-        CustomerId customerId;
-        if (!getCustomerIdByLogin(login, &customerId)) {
+    Result login(String login, String password, SessionKey *key) {
+        auto customerIdIt = m_customerLoginIdCache.find(login);
+        if (customerIdIt == m_customerLoginIdCache.end()) {
             return RESULT_INVALID_CREDENTIALS;
         }
 
-        if (m_customers[customerId].password != password) {
+        CustomerId customerId = customerIdIt.value();
+        CustomerInfo& cust = m_customers[customerId];
+
+        if (cust.password != password) {
             return RESULT_INVALID_CREDENTIALS;
         }
 
-
-        // generate new
+        // generate new session key
         SessionKey generatedKey;
         generateSessionKey(&generatedKey);
 
-        /*
         __transaction_atomic {
+            // expire old session
+            m_customerSessionCache.removeAll(customerId);
 
-            CustomerSessionMap::Iterator sessionIt = m_customerSessions.find(customerId);
-            if (sessionIt != m_customerSessions.end()) {
-                // reuse key
-                (*key) = sessionIt.value();
-                return RESULT_SUCCESS;
-            } else {
-                /// FIXME: m_sessions.insert(generatedKey, customerId);
-                /// FIXME: m_customerSessions.insert(customerId, generatedKey);
-                *key = generatedKey;
-                return RESULT_SUCCESS;
-            }
+            // start new session
+            m_sessionCustomerCache.insert(generatedKey, customerId);
+            m_customerSessionCache.insert(customerId, generatedKey);
+
+            *key = generatedKey;
         }
-        */
+
+        return RESULT_SUCCESS;
     }
 
     /**
       * Deauthenticate customer
       */
-    OperationResult logout(const SessionKey& key) {
+    Result logout(const SessionKey& key) {
         CustomerId customerId;
         if (!getCustomerIdBySession(key, &customerId)) {
             return RESULT_INVALID_SESSION;
         }
 
-        /// FIXME:
-        /*
         __transaction_atomic {
-            m_sessions.removeAll(key);
-            m_customerSessions.removeAll(customerId);
-            return RESULT_SUCCESS;
+            m_sessionCustomerCache.removeAll(key);
+            m_customerSessionCache.removeAll(customerId);
         }
-        */
+
+        return RESULT_SUCCESS;
     }
 
     /**
-     *
+     * Create new account for current customer
      */
-    OperationResult createAccount(const SessionKey& key, AccountNumber *accountNumber) {
+    Result createAccount(const SessionKey& key, AccountNumber *accountNumber) {
         CustomerId customerId;
         if (!getCustomerIdBySession(key, &customerId)) {
             return RESULT_INVALID_SESSION;
@@ -155,47 +163,48 @@ public:
 
         __transaction_atomic {
             AccountInfo account;
+            account.owner = customerId;
+            account.number = accountNumberGenerated;
             account.balance = 0.0;
 
             AccountId accountId = m_accounts.size();
             m_accounts.pushBack(account);
 
-            /// FIXME
-            /// m_accountNumberIdMap.insert(accountNumberGenerated, accountId);
-            /// m_customerAccounts.insert(customerId, accountNumberGenerated);
+            m_accountNumberIdCache.insert(accountNumberGenerated, accountId);
+            m_customerAccountIdCache.insert(customerId, accountId);
 
             *accountNumber = accountNumberGenerated;
-            return RESULT_SUCCESS;
         }
+
+        return RESULT_SUCCESS;
     }
 
-    OperationResult getAccounts(const SessionKey& key, Utils::Vector<AccountNumber> &result) {
+    Result getAccounts(const SessionKey& key, Utils::Vector<AccountNumber> &result) {
         CustomerId customerId;
         if (!getCustomerIdBySession(key, &customerId)) {
             return RESULT_INVALID_SESSION;
         }
 
-        /// FIXME
-        /*
+        result.clear();
         __transaction_atomic {
-            result.clear();
+            for(auto it = m_customerAccountIdCache.find(customerId);
+                it != m_customerAccountIdCache.end() && it.key() == customerId;
+                it++) {
 
-            for(CustomerAccountNumberMap::Iterator it = m_customerAccounts.find(customerId);
-                it != m_customerAccounts.end() && it.key() == customerId; it++) {
-                result.pushBack(it.value());
+                const AccountId accountId = it.value();
+                result.pushBack(m_accounts[accountId].number);
             }
-
-            return RESULT_SUCCESS;
         }
-        */
+
+        return RESULT_SUCCESS;
     }
 
-    OperationResult getBalance(const SessionKey& key, const AccountNumber& accountNumber, Money *balance) {
+    Result getBalance(const SessionKey& key,
+                               const AccountNumber& accountNumber, Money *balance) {
         CustomerId customerId;
         if (!getCustomerIdBySession(key, &customerId)) {
             return RESULT_INVALID_SESSION;
         }
-
 
         AccountId accountId;
         if (!getAccountIdByNumberAndCustomerId(customerId, accountNumber, &accountId)) {
@@ -207,7 +216,8 @@ public:
         return RESULT_SUCCESS;
     }
 
-    OperationResult withdrawMoney(const SessionKey& key, const AccountNumber& accountNumber, Money sum) {
+    Result withdrawMoney(const SessionKey& key,
+                                  const AccountNumber& accountNumber, Money sum) {
         CustomerId customerId;
         if (!getCustomerIdBySession(key, &customerId)) {
             return RESULT_INVALID_SESSION;
@@ -218,7 +228,7 @@ public:
             return RESULT_ACCOUNT_NOT_FOUND;
         }
 
-        // classical
+        // classic
         __transaction_atomic {
             // safe check here
             if (m_accounts[accountId].balance < sum) {
@@ -232,7 +242,8 @@ public:
         }
     }
 
-    OperationResult depositMoney(const SessionKey& key, const AccountNumber& accountNumber, Money sum) {
+    Result depositMoney(const SessionKey& key,
+                                 const AccountNumber& accountNumber, Money sum) {
         CustomerId customerId;
         if (!getCustomerIdBySession(key, &customerId)) {
             return RESULT_INVALID_SESSION;
@@ -243,13 +254,8 @@ public:
             return RESULT_ACCOUNT_NOT_FOUND;
         }
 
-        // classical
+        // classic
         __transaction_atomic {
-            // safe check here
-            if (m_accounts[accountId].balance < sum) {
-                return RESULT_NO_ENOUGH_MONEY;
-            }
-
             m_accounts[accountId].balance += sum;
             m_customerMoneyTotal += sum;
 
@@ -260,17 +266,26 @@ public:
     /*
      * Testing APIs
      */
-
-    void doMonthlyPeriodics() {
-        for(AccountVector::Iterator it = m_accounts.begin();
-            it != m_accounts.end(); it++) {
-            __transaction_atomic {
-                Money profit = it->balance * m_depositRate;
+    bool doMonthlyPeriodic() {
+        bool result = false;
+        __transaction_atomic {
+            for(auto it = m_accounts.begin();
+                it != m_accounts.end(); it++) {
+                const Money profit = it->balance * m_depositRate;
                 it->balance += profit;
                 m_customerMoneyTotal += profit;
                 m_ownMoneyTotal -= profit;
+
+                if (m_ownMoneyTotal <= 0.0) {
+                    // epic fail, our bank went bankrupt
+                    __transaction_cancel;
+                }
             }
+
+            result = true;
         }
+
+        return result;
     }
 
     /**
@@ -296,19 +311,48 @@ protected:
     typedef size_t CustomerId;
 
     /**
-     * Account information
+     * Customer information
      */
-    struct AccountInfo {
-        Money balance;
-    };
-
-    /**
-      * Customer info for the bank
-      */
     struct CustomerInfo {
         Login login;
         Password password;
     };
+
+    /**
+     * Account information
+     */
+    struct AccountInfo {
+        AccountNumber number;
+        CustomerId owner;
+        Money balance;
+    };
+
+    Money m_ownMoneyTotal;
+    Money m_customerMoneyTotal;
+    double m_depositRate;
+    AccountNumber m_lastAccountNumber = 1000000;
+
+    typedef Utils::Vector<CustomerInfo> Customers;
+    Customers m_customers;
+
+    typedef Utils::Vector<AccountInfo> Accounts;
+    Accounts m_accounts;
+
+    typedef Utils::TreeMap<Login, CustomerId> CustomerLoginIdCache;
+    CustomerLoginIdCache m_customerLoginIdCache;
+
+    typedef Utils::TreeMap<CustomerId, AccountId> CustomerAccountIdCache;
+    CustomerAccountIdCache m_customerAccountIdCache;
+
+    typedef Utils::TreeMap<AccountNumber, AccountId> AccountNumberIdMap;
+    AccountNumberIdMap m_accountNumberIdCache;
+
+    typedef Utils::TreeMap<SessionKey, CustomerId> SessionCustomerCache;
+    SessionCustomerCache m_sessionCustomerCache;
+    typedef Utils::TreeMap<CustomerId, SessionKey> CustomerSessionCache;
+    CustomerSessionCache m_customerSessionCache;
+
+
 
     void generateSessionKey(SessionKey *key) {
         static const size_t SESSION_KEY_LENGTH = 128;
@@ -322,24 +366,15 @@ protected:
     }
 
     void generateAccountNumber(AccountNumber *accountNumber) {
-        std::random_device rnd;
-
-        *accountNumber = rnd();
-    }
-
-    bool getCustomerIdByLogin(const String& login, CustomerId *customerId) const {
-        CustomerLoginIdMap::Iterator customerIdIt = m_customerLoginIdMap.find(login);
-        if (customerIdIt == m_customerLoginIdMap.end()) {
-            return false;
+        __transaction_atomic {
+            m_lastAccountNumber++;
+            *accountNumber = m_lastAccountNumber;
         }
-
-        *customerId = customerIdIt.value();
-        return true;
     }
 
     bool getCustomerIdBySession(const SessionKey& key, CustomerId *customerId) {
-        SessionCustomerMap::Iterator sessionIt = m_sessions.find(key);
-        if (sessionIt != m_sessions.end()) {
+        auto sessionIt = m_sessionCustomerCache.find(key);
+        if (sessionIt != m_sessionCustomerCache.end()) {
             *customerId = sessionIt.value();
             return true;
         }
@@ -348,8 +383,8 @@ protected:
     }
 
     bool getAccountIdByNumber(const AccountNumber& accountNumber, AccountId *accountId) {
-        AccountNumberIdMap::Iterator it = m_accountNumberIdMap.find(accountNumber);
-        if (it != m_accountNumberIdMap.end()) {
+        auto it = m_accountNumberIdCache.find(accountNumber);
+        if (it != m_accountNumberIdCache.end()) {
             *accountId = it.value();
             return true;
         }
@@ -361,42 +396,22 @@ protected:
     bool getAccountIdByNumberAndCustomerId(const CustomerId& customerId,
                                            const AccountNumber& accountNumber,
                                            AccountId *accountId) {
-        for(CustomerAccountNumberMap::Iterator it = m_customerAccounts.find(customerId);
-            it != m_customerAccounts.end() && it.key() == customerId; it++) {
-            if (it.value() == accountNumber) {
-                return getAccountIdByNumber(accountNumber, accountId);
-            }
+        auto it = m_customerAccountIdCache.find(customerId, accountNumber);
+        if (it != m_customerAccountIdCache.end()) {
+            *accountId = it.value();
         }
 
         return false;
     }
-
-    Money m_ownMoneyTotal;
-    Money m_customerMoneyTotal;
-    double m_depositRate;
-
-    typedef Utils::Vector<CustomerInfo> CustomerVector;
-    CustomerVector m_customers;
-    typedef Utils::TreeMap<Login, AccountId> CustomerLoginIdMap;
-    CustomerLoginIdMap m_customerLoginIdMap;
-
-    typedef Utils::Vector<AccountInfo> AccountVector;
-    AccountVector m_accounts;
-    typedef Utils::TreeMap<AccountNumber, AccountId> AccountNumberIdMap;
-    AccountNumberIdMap m_accountNumberIdMap;
-
-    typedef Utils::TreeMap<CustomerId, AccountNumber> CustomerAccountNumberMap;
-    CustomerAccountNumberMap m_customerAccounts;
-
-    typedef Utils::TreeMap<SessionKey, CustomerId> SessionCustomerMap;
-    SessionCustomerMap m_sessions;
-    typedef Utils::TreeMap<CustomerId, SessionKey> CustomerSessionMap;
-    CustomerSessionMap m_customerSessions;
 };
 
 } // namespace Banks
 
+
 using namespace Banks;
+
+
+
 
 class BankTest: public AbstractTest {
 public:
@@ -515,7 +530,7 @@ protected:
     static constexpr int SIMULATOR_ACCOUNTS_MAX = 5;
     static constexpr Money SIMULATOR_OWN_MONEY = 1000.0;
     static constexpr Money SIMULATOR_CUSTOMERS_MONEY = 100000.0;
-    static constexpr double SIMULATOR_DEPOSIT_RATE =0.10;
+    static constexpr double SIMULATOR_DEPOSIT_RATE = 0.10;
 
     std::vector<int> m_input;
     std::vector< std::pair<size_t, size_t> > m_ranges;
