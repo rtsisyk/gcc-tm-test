@@ -12,7 +12,7 @@ public:
     LinkedList() {
         m_head = new Node();
         m_head->next = NULL;
-        m_head->prev = NULL;
+        m_head->prev = m_head;
         m_size = 0;
     }
 
@@ -39,12 +39,7 @@ public:
     }
 
     Iterator pushBack(const ValueType& value) {
-        Node *cur = m_head;
-        while (cur->next != NULL) {
-            cur = cur->next;
-        }
-
-        return insert(cur, value);
+        return insert(m_head->prev, value);
     }
 
     Iterator insert(const Iterator& it, const ValueType& value) {
@@ -72,6 +67,7 @@ public:
         }
 
         m_head->next = NULL;
+        m_head->prev = m_head;
 
         m_size = 0;
     }
@@ -186,7 +182,10 @@ protected:
         node->prev = prev;
         if (prev->next != NULL) {
             prev->next->prev = node;
+        } else {
+            m_head->prev = node;
         }
+
         prev->next = node;
         m_size++;
         return Iterator(this, node);
@@ -194,12 +193,12 @@ protected:
 
     Iterator remove(Node *cur) {
         printf("Remove: %d\n", cur->value);
-        if (cur->prev != NULL) {
-            cur->prev->next = cur->next;
-        }
+        cur->prev->next = cur->next;
 
         if (cur->next != NULL) {
             cur->next->prev = cur->prev;
+        } else {
+            m_head->prev = cur->prev;
         }
 
         Node *next = cur->next;
