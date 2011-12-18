@@ -45,27 +45,17 @@ public:
     }
 
 protected:
-    virtual void workerSequential(size_t start, size_t end) {
-        for(size_t i = start; i < end; i++) {
-            bool back = (rand() % 2);
-            if (back) {
-                m_sharedList.pushBack(m_input[i]);
-            } else {
-                m_sharedList.pushFront(m_input[i]);
-            }
-        }
-    }
 
-    virtual void workerThreaded(size_t start, size_t end) {
+    virtual void worker(size_t start, size_t end) {
         for(size_t i = start; i < end; i++) {
             bool back = (rand() % 2);
-            __transaction_atomic {
+            BEGIN_CRITICAL_SECTION();
                 if (back) {
                     m_sharedList.pushBack(m_input[i]);
                 } else {
                     m_sharedList.pushFront(m_input[i]);
                 }
-            }
+            END_CRITICAL_SECTION();
         }
     }
 

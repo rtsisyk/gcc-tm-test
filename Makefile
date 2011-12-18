@@ -4,28 +4,33 @@
 CONTRIB=./contrib/target
 
 CXX=g++
-CXXFLAGS=-std=c++0x -pedantic -Wall -fgnu-tm -Isrc -O2
-LDFLAGS=-Wl,-rpath,$(CONTRIB)/lib -Wl,-rpath,$(CONTRIB)/lib32 -Wl,-rpath,$(CONTRIB)/lib64 -Wl,-rpath,/usr/lib/gcc-snapshot/lib -litm -lpthread
+CXXFLAGS=-std=c++0x -pedantic -Wall -Isrc -O2 -march=native
+LDFLAGS=-Wl,-rpath,$(CONTRIB)/lib -Wl,-rpath,$(CONTRIB)/lib32 -Wl,-rpath,$(CONTRIB)/lib64 -Wl,-rpath,/usr/lib/gcc-snapshot/lib -lpthread
 TARGET=tester
 
 ####
 
 PATH:=$(CONTRIB)/bin:/usr/lib/gcc-snapshot/bin:${PATH}
 
-all: $(TARGET)
+all: $(TARGET)-onethread $(TARGET)-tm-gnu $(TARGET)-tm-tiny $(TARGET)-mutex
 
-$(TARGET): main.o
-	$(CXX) $(LDFLAGS) main.o -o $@
+$(TARGET)-onethread: src/main.cpp src/Tests/*.h src/Utils/*.h
+	$(CXX) $(CXXFLAGS) -DLOCKTYPE_NONE $(LDFLAGS) src/main.cpp -o $@
 
-main.o: src/main.cpp src/Tests/*.h src/Utils/*.h
-	$(CXX) -v
-	$(CXX) $(CXXFLAGS) -c src/main.cpp -o main.o
+$(TARGET)-tm-gnu: src/main.cpp src/Tests/*.h src/Utils/*.h
+	$(CXX) $(CXXFLAGS) -fgnu-tm -DLOCKTYPE_TM $(LDFLAGS) -litm src/main.cpp -o $@
+
+$(TARGET)-tm-tiny: src/main.cpp src/Tests/*.h src/Utils/*.h
+	$(CXX) $(CXXFLAGS) -fgnu-tm -DLOCKTYPE_TM $(LDFLAGS) -litmtiny src/main.cpp -o $@
+
+$(TARGET)-mutex: src/main.cpp src/Tests/*.h src/Utils/*.h
+	$(CXX) $(CXXFLAGS) -DLOCKTYPE_MUTEX $(LDFLAGS) src/main.cpp -o $@
 
 contrib:
 	make -C $(CONTRIB)
 
 clean:
-	rm -rf *.o $(TARGET)
+	rm -rf *.o $(TARGET)-onethread $(TARGET)-gnustm $(TARGET)-tinystm $(TARGET)-mutex
 
 distclean: clean
 	make -C $(CONTRIB) distclean

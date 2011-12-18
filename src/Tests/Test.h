@@ -5,13 +5,17 @@
 #include <random>
 #include <algorithm>
 #include <thread>
+#ifdef LOCKTYPE_MUTEX
+#include <mutex>
+#endif
+
+#include "../Common.h"
 
 struct ITest {
     virtual void generate(size_t inputSize, size_t threadsCount) = 0;
 
     virtual void setup() = 0;
-    virtual void runSequential() = 0;
-    virtual void runThreaded() = 0;
+    virtual void run() = 0;
     virtual void teardown() = 0;
 
     virtual bool check()  = 0;
@@ -32,8 +36,7 @@ public:
         // nothing
     }
 
-    virtual void runSequential() = 0;
-    virtual void runThreaded() = 0;
+    virtual void run() = 0;
 
     virtual void teardown() {
         // nothing
@@ -69,18 +72,12 @@ public:
         m_ranges[m_threadsCount-1].second = m_inputSize;
     }
 
-    virtual void runSequential() {
-        for(size_t threadId = 0; threadId < m_threadsCount; threadId++) {
-            workerSequential(m_ranges[threadId].first, m_ranges[threadId].second);
-        }
-    }
-
-    virtual void runThreaded() {
+    virtual void run() {
         std::vector<std::thread> threads;
         threads.resize(m_threadsCount);
 
         for(size_t threadId = 0; threadId < m_threadsCount; threadId++) {
-            threads[threadId] = std::thread(std::bind( &NumbersTest::workerThreaded, this,
+            threads[threadId] = std::thread(std::bind( &NumbersTest::worker, this,
                                                       m_ranges[threadId].first, m_ranges[threadId].second));
         }
 
@@ -90,8 +87,11 @@ public:
     }
 
 protected:
-    virtual void workerSequential(size_t start, size_t end) = 0;
-    virtual void workerThreaded(size_t start, size_t end) = 0;
+#ifdef LOCKTYPE_MUTEX
+    std::mutex lock;
+#endif
+
+    virtual void worker(size_t start, size_t end) = 0;
 
     std::vector<int> m_input;
     std::vector< std::pair<size_t, size_t> > m_ranges;

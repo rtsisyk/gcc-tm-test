@@ -32,17 +32,11 @@ public:
     }
 
 protected:
-   virtual void workerSequential(size_t start, size_t end) {
-        for(size_t i = start; i < end; i++) {
-            m_sharedVector.pushBack(m_input[i]);
-        }
-    }
-
-    virtual void workerThreaded(size_t start, size_t end) {
+    virtual void worker(size_t start, size_t end) {
          for(size_t i = start; i < end; i++) {
-             __transaction_atomic {
+             BEGIN_CRITICAL_SECTION();
                  m_sharedVector.pushBack(m_input[i]);
-             }
+             END_CRITICAL_SECTION();
          }
      }
 

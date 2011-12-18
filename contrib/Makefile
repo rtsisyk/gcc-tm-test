@@ -3,7 +3,7 @@ TINYSTM_VERSION=1.0.3
 TINYSTM_DIR=tinySTM-$(TINYSTM_VERSION)
 TINYSTM_TARBALL=$(TINYSTM_DIR).tgz
 TINYSTM_URL=http://tmware.org/sites/tmware.org/files/tinySTM/$(TINYSTM_TARBALL)
-TINYSTM_LIB=libitm.so
+TINYSTM_LIB=libitmtiny.so
 
 GCCTRUNK_SVN=svn://gcc.gnu.org/svn/gcc/trunk
 GCCTRUNK_DIR=gcc-trunk
@@ -42,7 +42,7 @@ $(TARGET_DIR)/lib/$(TINYSTM_LIB): $(BUILD_DIR)/$(TINYSTM_DIR)
 	@echo "====== TinySTM: install ======"
 	@mkdir -p $(TARGET_DIR)/lib
 	@rm -rf $@.0
-	cp $(BUILD_DIR)/$(TINYSTM_DIR)/abi/gcc/$(TINYSTM_LIB) $@
+	cp $(BUILD_DIR)/$(TINYSTM_DIR)/abi/gcc/libitm.so $@
 	ln -s $(TINYSTM_LIB) $@.0
 
 $(BUILD_DIR)/$(TINYSTM_DIR): $(DIST_DIR)/$(TINYSTM_TARBALL) 
@@ -63,7 +63,7 @@ $(BUILD_DIR)/.gcc-trunk: $(DIST_DIR) $(BUILD_DIR)  $(TARGET_DIR) $(TARGET_DIR)/b
 $(TARGET_DIR)/bin/${GCCTRUNK_BIN}: $(DIST_DIR)/.gcc-trunk-svnup
 	@echo "====== GCC-trunk: configure ======"
 	@mkdir -p $(BUILD_DIR)/$(GCCTRUNK_DIR)
-	CONFIGURE=`realpath $(DIST_DIR)/$(GCCTRUNK_DIR)/configure` PREFIX=`realpath $(TARGET_DIR)`; \
+	CONFIGURE="$(realpath $(DIST_DIR))/$(GCCTRUNK_DIR)/configure" PREFIX="$(realpath $(TARGET_DIR))"; \
 		cd $(BUILD_DIR)/$(GCCTRUNK_DIR) ;\
 		$${CONFIGURE} \
 		--enable-languages=c,c++ \

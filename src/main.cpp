@@ -33,10 +33,14 @@ typedef std::chrono::high_resolution_clock Clock;
 
 int main(int argc, char *argv[])
 {
+    std::cerr << "Tester compiled with LOCKTYPE_" << LOCKTYPE << endl;
+
     if (argc > 1) {
         cerr << "Usage: " << argv[0] << " < tests.cfg" << endl << flush;
         return 1;
     }
+
+    cout << "Wating for configuration data from stdin..." << endl;
 
     size_t testsCount = 0;
     while(true) {
@@ -55,8 +59,10 @@ int main(int argc, char *argv[])
         }
 
         cin >> testName >> threadsCount >> inputSize >> repeatCount;
-        if (!cin.good()) {
+        if (cin.eof()) {
             break;
+        } else if (!cin.good()) {
+            continue;
         }
 
         TestsMap::const_iterator it = TESTS.find(testName);
@@ -70,23 +76,26 @@ int main(int argc, char *argv[])
         cout << "Input size: " << inputSize << endl;
         cout << "Repeat count: " << repeatCount << endl;
 
+#ifdef LOCKTYPE_NONE
+        if (threadsCount > 1) {
+            cerr << "Skipping multithread test due to LOCKTYPE_NONE defined" << endl;
+            continue;
+        }
+#endif
+
         ITest *test = it->second();
         double msThreadedAv = 0.0;
-        double msSequencialAv = 0.0;
 
         bool isOk = true;
 
         for (size_t i = 0; i < repeatCount; i++) {
-            cout << "Generating data..." << flush;
             test->generate(inputSize, threadsCount);
-            cout << " OK" << endl;
 
-            cout << "Running..." << endl << flush;
-            cout << setw(20) << left << "\tThreaded...";
             test->setup();
 
+            cout << setw(20) << left << "\tRun...";
             Clock::time_point t0 = Clock::now();
-            test->runThreaded();
+            test->run();
             Clock::time_point t1 = Clock::now();
 
             if (test->check()) {
@@ -101,37 +110,15 @@ int main(int argc, char *argv[])
             test->teardown();
 
             cout << flush;
-
-            cout << setw(20) << left << "\tSequencial...";
-            test->setup();
-
-            Clock::time_point t2 = Clock::now();
-            test->runSequential();
-            Clock::time_point t3 = Clock::now();
-
-            if (test->check()) {
-                double ms = std::chrono::nanoseconds(t3 - t2).count() * 1e-6;
-                msSequencialAv += ms;
-                cout << "OK " << fixed << setprecision(3) << ms << " ms" << endl;
-            } else {
-                isOk = false;
-                cout << "FAIL " << endl;
-            }
-
-            test->teardown();
-
-            cout << endl << flush;
         }
 
         if (isOk) {
             msThreadedAv /= repeatCount;
-            msSequencialAv /= repeatCount;
 
-            cout << endl << "> " << testName << " ok "
+            cout << endl << "> " << testName << " " << LOCKTYPE << " OK "
                  << inputSize << " " << threadsCount << " " <<
                     repeatCount << " " <<
-                    msThreadedAv << " " <<
-                    msSequencialAv << endl;
+                    msThreadedAv << endl;
         } else {
             cout << endl << "> " << testName << " fail" << endl;
         }
