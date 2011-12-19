@@ -38,4 +38,17 @@ distclean: clean
 run: $(TARGET)-tm-tiny
 	./$(TARGET)-tm-tiny < ./tests.cfg
 
-.PHONY: contrib clean distclean run
+runall: all
+	@host=`hostname`; \
+	echo "Test host: $${host}"; \
+	rm -rf out/$${host}; \
+	mkdir out/$${host}; \
+	cat /proc/cpuinfo > tests/$${host}.txt; \
+	cat /proc/meminfo > tests/$${host}.txt; \
+	for tester in $(TARGET)-onethread $(TARGET)-tm-gnu $(TARGET)-tm-tiny $(TARGET)-mutex; do \
+	    echo "Running $${tester}"; \
+	    cat out/tests.cfg | ./$${tester} | tee out/$${host}/$${tester}.txt; \
+	done \
+	;
+
+.PHONY: all contrib clean distclean run runall

@@ -14,5 +14,6 @@
 *.user
 .~*
 tmp/
-tester
+tester-*
 tests.cfg
+out/

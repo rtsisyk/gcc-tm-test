@@ -57,7 +57,7 @@ public:
         AbstractTest::generate(inputSize, threadsCount);
         m_input.resize(m_inputSize);
         for(size_t i = 0; i < m_inputSize; i++) {
-            m_input[i] = m_rnd() % 1000;
+            m_input[i] = m_rnd() % inputSize;
         }
 
         const size_t keysPerThread = m_inputSize / m_threadsCount;
