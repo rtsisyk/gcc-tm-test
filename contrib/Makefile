@@ -38,7 +38,7 @@ $(BUILD_DIR)/.tinystm: $(DIST_DIR) $(BUILD_DIR)  $(TARGET_DIR) $(TARGET_DIR)/lib
 
 $(TARGET_DIR)/lib/$(TINYSTM_LIB): $(BUILD_DIR)/$(TINYSTM_DIR)
 	@echo "====== TinySTM: build ======"
-	make -C $(BUILD_DIR)/$(TINYSTM_DIR) abi-gcc
+	make -C $(BUILD_DIR)/$(TINYSTM_DIR) abi-gcc DEFINES="-DTLS -DDESIGN=WRITE_THROUGH -DCM=CM_DELAY -DCLOCK_IN_CACHE_LINE -UEPOCH_GC -UINTERNAL_STATS -DIRREVOCABLE_ENABLED"
 	@echo "====== TinySTM: install ======"
 	@mkdir -p $(TARGET_DIR)/lib
 	@rm -rf $@.0

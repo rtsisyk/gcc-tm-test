@@ -11,10 +11,8 @@
 #include "Tests/ListInsertTest.h"
 #include "Tests/TreeInsertTest.h"
 #include "Tests/TreeRemoveTest.h"
+#include "Tests/HashInsertTest.h"
 // #include "Tests/BankTest.h"
-
-#include "Utils/Vector.h"
-#include "Utils/LinkedList.h"
 
 using namespace std;
 
@@ -26,10 +24,13 @@ static const TestsMap TESTS = {
     { "ListInsertTest", [] { return new ListInsertTest(); } },
     { "TreeInsertTest", [] { return new TreeInsertTest(); } },
     { "TreeRemoveTest", [] { return new TreeRemoveTest(); } },
+    { "HashInsertTest", [] { return new HashInsertTest(); } },
 //    { "BankTest", [] { return new BankTest(); } },
 };
 
 typedef std::chrono::high_resolution_clock Clock;
+
+
 
 int main(int argc, char *argv[])
 {
@@ -49,20 +50,21 @@ int main(int argc, char *argv[])
         size_t inputSize;
         size_t repeatCount;
 
-        // skip comment
-        if (cin.get() == '#') {
+        const int sym = cin.get();
+        if (sym == -1) {
+            // end of file
+            break;
+        } else if (!std::isalpha(sym)) {
+            // skip comment and white space
             string line;
             getline(cin, line);
             continue;
         } else {
             cin.unget();
-        }
-
-        cin >> testName >> threadsCount >> inputSize >> repeatCount;
-        if (cin.eof()) {
-            break;
-        } else if (!cin.good()) {
-            continue;
+            cin >> testName >> threadsCount >> inputSize >> repeatCount;
+            if (!cin.good()) {
+                continue;
+            }
         }
 
         TestsMap::const_iterator it = TESTS.find(testName);

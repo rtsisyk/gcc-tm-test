@@ -30,12 +30,12 @@ contrib:
 	make -C $(CONTRIB)
 
 clean:
-	rm -rf *.o $(TARGET)-onethread $(TARGET)-gnustm $(TARGET)-tinystm $(TARGET)-mutex
+	rm -rf *.o $(TARGET)-onethread $(TARGET)-tm-gnu $(TARGET)-tm-tiny $(TARGET)-mutex
 
 distclean: clean
 	make -C $(CONTRIB) distclean
 
-run: $(TARGET)
-	./$(TARGET) < ./tests.cfg
+run: $(TARGET)-tm-tiny
+	./$(TARGET)-tm-tiny < ./tests.cfg
 
 .PHONY: contrib clean distclean run
