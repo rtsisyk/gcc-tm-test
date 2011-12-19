@@ -128,10 +128,9 @@ public:
         return m_tree.clear();
     }
 
-    // FIXME: hack
-    // size_t size() const {
-    //     return m_tree.size();
-    // }
+    size_t size() const {
+        return m_tree.size();
+    }
 
     bool isEmpty() const {
         return  begin() == end();

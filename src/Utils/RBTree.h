@@ -40,7 +40,17 @@ public:
     RBTree& operator=(const RBTree& tree);
 
     int size() const {
-        return m_size;
+        // HACK: don't use m_size for TM performance reasons
+        // return m_size;
+
+        size_t res = 0;
+        for(Node *cur = minimum();
+            cur != NULL && cur != m_nullNode;
+            cur = successor(cur)) {
+            res++;
+        }
+
+        return res;
     }
 
     Node *rootNode() const {
@@ -292,7 +302,7 @@ public:
 
         delete removeNode;
 
-        // FIXME: hack
+        // HACK: don't use m_size for TM performance reasons
         // m_size--;
 
         return successorNode;
@@ -316,41 +326,22 @@ public:
         int count;
     };
 
-    template<class FunctionType>
-    void treeTraversePreorder(FunctionType& fun)
-    {
-        Node *node = m_root;
-        Node** stack = new Node*[m_size];
-        int height = 0;
-
-        while(true)
-        {
-            while (0 != node && m_nullNode != node)
-            {
-                stack[height++] = node;
-                fun(node);
-                node = node->left;
-            }
-
-            if (height == 0)
-                break;
-
-            node = stack[--height];
-            node = node->right;
-        }
-
-        delete[] stack;
-    }
-
     void clear() {
-        TreeTraverserImpl tr(m_size);
-        treeTraversePreorder(tr);
+        size_t mysize = size();
+        Node** stack = new Node*[mysize];
 
-        for(int i = 0; i < tr.count; i++) {
-            delete tr.nodes[i];
+        size_t pos = 0;
+        for(Node *cur = minimum();
+            cur != NULL && cur != m_nullNode;
+            cur = successor(cur)) {
+            stack[pos++] = cur;
         }
 
-        m_root = 0;
+        for(size_t i = 0; i < mysize; i++) {
+            delete stack[i];
+        }
+
+        m_root = NULL;
     }
 
 protected:

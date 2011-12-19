@@ -56,6 +56,7 @@ int main(int argc, char *argv[])
             break;
         } else if (!std::isalpha(sym)) {
             // skip comment and white space
+            cin.unget();
             string line;
             getline(cin, line);
             continue;
@@ -101,9 +102,11 @@ int main(int argc, char *argv[])
             Clock::time_point t1 = Clock::now();
 
             if (test->check()) {
-                double ms = std::chrono::nanoseconds(t1 - t0).count() * 1e-6;
+                const double ms = std::chrono::nanoseconds(t1 - t0).count() * 1e-6;
+                const size_t opsPerSec = static_cast<size_t>(ceil((double) inputSize / ms));
+
                 msThreadedAv += ms;
-                cout << "OK " << fixed << setprecision(3) << ms << " ms" << endl;
+                cout << "OK " << fixed << setprecision(3) << ms << " ms, " << opsPerSec << " ops/s" << endl;
             } else {
                 isOk = false;
                 cout << "FAIL " << endl;
@@ -116,11 +119,13 @@ int main(int argc, char *argv[])
 
         if (isOk) {
             msThreadedAv /= repeatCount;
+            
+            size_t opsPerSecAv = static_cast<size_t>(ceil((double) inputSize / msThreadedAv));
 
             cout << endl << "> " << testName << " " << LOCKTYPE << " OK "
                  << inputSize << " " << threadsCount << " " <<
                     repeatCount << " " <<
-                    msThreadedAv << endl;
+                    msThreadedAv << " " << opsPerSecAv << endl;
         } else {
             cout << endl << "> " << testName << " fail" << endl;
         }
