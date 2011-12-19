@@ -43,11 +43,15 @@ runall: all
 	echo "Test host: $${host}"; \
 	rm -rf out/$${host}; \
 	mkdir out/$${host}; \
-	cat /proc/cpuinfo > tests/$${host}.txt; \
-	cat /proc/meminfo > tests/$${host}.txt; \
+	cat /proc/cpuinfo > out/$${host}/cpuinfo.txt; \
+	cat /proc/meminfo > out/$${host}/meminfo.txt; \
+	echo "Test config:"; \
+	cat out/tests.cfg; \
+	echo -e "\n\n\n\n"; \
 	for tester in $(TARGET)-onethread $(TARGET)-tm-gnu $(TARGET)-tm-tiny $(TARGET)-mutex; do \
 	    echo "Running $${tester}"; \
-	    cat out/tests.cfg | ./$${tester} | tee out/$${host}/$${tester}.txt; \
+	    cat out/tests.cfg | ./$${tester} | tee out/$${host}/$${tester}.txt|grep ">"; \
+	    echo -e "\n\n"; \
 	done \
 	;
 
