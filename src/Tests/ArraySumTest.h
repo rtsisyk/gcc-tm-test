@@ -20,12 +20,14 @@ public:
 
 protected:
     virtual void worker(size_t start, size_t end) {
+        size_t localSum = 0;
         for(size_t i = start; i < end; i++) {
-            const int val = m_input[i];
-            BEGIN_CRITICAL_SECTION();
-                m_sharedSum += val;
-            END_CRITICAL_SECTION();
+            localSum += m_input[i];
         }
+
+        BEGIN_CRITICAL_SECTION();
+            m_sharedSum += localSum;
+        END_CRITICAL_SECTION();
     }
 
     size_t m_sharedSum;

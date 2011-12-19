@@ -186,7 +186,7 @@ public:
         }
 
         result.clear();
-        __transaction_atomic {
+        __transaction_atomic {return RESULT_NO_ENOUGH_MONEY;
             for(auto it = m_customerAccountIdCache.find(customerId);
                 it != m_customerAccountIdCache.end() && it.key() == customerId;
                 it++) {
@@ -277,7 +277,7 @@ public:
                 m_ownMoneyTotal -= profit;
 
                 if (m_ownMoneyTotal <= 0.0) {
-                    // epic fail, our bank went bankrupt
+                    // epic fail, our bank is bankrupt
                     __transaction_cancel;
                 }
             }
@@ -410,8 +410,28 @@ protected:
 
 using namespace Banks;
 
+enum WorkerOp {
+    OP_CHECK_BALANCE,
+    OP_WITHDRAW,
+    OP_DEPOSIT,
+};
+
+struct WorkerParams {
+    Login login;
+    Password password;
+    Money initialBalance;
+    Vector<WorkerOp> ops;
+};
 
 
+struct WorkerData {
+    Money balance;
+};
+
+static constexpr int SIMULATOR_ACCOUNTS_MAX = 5;
+static constexpr Money SIMULATOR_OWN_MONEY = 1000.0;
+static constexpr Money SIMULATOR_CUSTOMERS_MONEY = 100000.0;
+static constexpr double SIMULATOR_DEPOSIT_RATE = 0.10;
 
 class BankTest: public AbstractTest {
 public:
@@ -527,13 +547,8 @@ protected:
         return 0;
     }
 
-    static constexpr int SIMULATOR_ACCOUNTS_MAX = 5;
-    static constexpr Money SIMULATOR_OWN_MONEY = 1000.0;
-    static constexpr Money SIMULATOR_CUSTOMERS_MONEY = 100000.0;
-    static constexpr double SIMULATOR_DEPOSIT_RATE = 0.10;
-
-    std::vector<int> m_input;
-    std::vector< std::pair<size_t, size_t> > m_ranges;
+    std::vector<WorkerParams> params;
+    std::vector<WorkerParams> data;
 };
 
 

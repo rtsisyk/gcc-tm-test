@@ -103,7 +103,6 @@ public:
         }
     }
 
-    __attribute__((transaction_safe))
     Iterator removeAll(const KeyType& key) {
         TreeNode *node = NULL;
 
@@ -129,12 +128,13 @@ public:
         return m_tree.clear();
     }
 
-    size_t size() const {
-        return m_tree.size();
-    }
+    // FIXME: hack
+    // size_t size() const {
+    //     return m_tree.size();
+    // }
 
     bool isEmpty() const {
-        return size() == 0;
+        return  begin() == end();
     }
 
 protected:

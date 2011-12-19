@@ -292,7 +292,8 @@ public:
 
         delete removeNode;
 
-        m_size--;
+        // FIXME: hack
+        // m_size--;
 
         return successorNode;
     }
@@ -374,7 +375,8 @@ protected:
             }
         }
 
-        m_size++;
+        // FIXME: hack
+        // m_size++;
 
         insertFix(node);
         return node;
@@ -426,7 +428,9 @@ protected:
         }
 
         // Keeping black root
-        m_root->color = COLOR_BLACK;
+        if (m_root->color != COLOR_BLACK) {
+            m_root->color = COLOR_BLACK;
+        }
     }
 
     void removeFix(Node *node)
@@ -499,7 +503,9 @@ protected:
             }
         }
 
-        node->color = COLOR_BLACK;
+        if (node->color != COLOR_BLACK) {
+            node->color = COLOR_BLACK;
+        }
     }
 
     void rotate(Node *current, RotateDirection direction)
