@@ -1,16 +1,20 @@
 #
 
 # contrib directory
-CONTRIB=./contrib/target
+CONTRIB=./contrib
 
 CXX=g++
 CXXFLAGS=-std=c++0x -pedantic -Wall -Isrc -O2 -march=native
-LDFLAGS=-Wl,-rpath,$(CONTRIB)/lib -Wl,-rpath,$(CONTRIB)/lib32 -Wl,-rpath,$(CONTRIB)/lib64 -Wl,-rpath,/usr/lib/gcc-snapshot/lib -lpthread
+LDFLAGS=-L$(CONTRIB)/target/lib -Wl,-rpath,$(CONTRIB)/target/lib \
+        -L$(CONTRIB)/target/lib32 -Wl,-rpath,$(CONTRIB)/target/lib32 \
+        -L$(CONTRIB)/target/lib64 -Wl,-rpath,$(CONTRIB)/target/lib64 \
+        -L/usr/lib/gcc-snapshot/lib -Wl,-rpath,/usr/lib/gcc-snapshot/lib -lpthread
+
 TARGET=tester
 
 ####
 
-PATH:=$(CONTRIB)/bin:/usr/lib/gcc-snapshot/bin:${PATH}
+PATH:=$(CONTRIB)/target/bin:/usr/lib/gcc-snapshot/bin:${PATH}
 
 all: $(TARGET)-onethread $(TARGET)-tm-gnu $(TARGET)-tm-tiny $(TARGET)-mutex
 
