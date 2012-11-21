@@ -58,13 +58,12 @@ We especially didn't used hard-core manual optimization, suitable only for TM.
 We instead applied "naive" approach where synchronizations are applied only at
 upper level, synchronizing entire modification operation.
 
-<pre>
-for(size_t i = start; i < end; i++) {
-    BEGIN_CRITICAL_SECTION();
-        m_sharedRedBlackTree.insertMulti(m_input[i]);
-    END_CRITICAL_SECTION();
-}
-</pre>
+    for(size_t i = start; i < end; i++) {
+        BEGIN_CRITICAL_SECTION();
+            m_sharedRedBlackTree.insertMulti(m_input[i]);
+        END_CRITICAL_SECTION();
+    }
+
 
 All data structures were written from a scratch, because current GCC TM frontend
 do not know how to test methods from external libraries for side effects and
